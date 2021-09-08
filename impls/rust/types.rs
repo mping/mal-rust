@@ -4,7 +4,7 @@ use std::fmt;
 //use std::collections::HashMap;
 
 use crate::types::MalErr::{ErrMalVal, ErrString};
-use crate::types::MalVal::{List, Vector, Hash, Nil, Str, Sym, Bool, Int, Atom, Keyword};
+use crate::types::MalVal::{List, Vector, Hash, Nil, Str, Sym, Bool, Int, Atom, Keyword, Func};
 use crate::types::MapKey::{Ks, Kw};
 
 
@@ -44,10 +44,9 @@ pub enum MalVal {
     List(Rc<Vec<MalVal>>, Rc<MalVal>),
     Vector(Rc<Vec<MalVal>>, Rc<MalVal>),
     Hash(Rc<FnvHashMap<MapKey, MalVal>>, Rc<MalVal>),
+    Func(fn(MalArgs) -> MalRet),
     Atom(),
 }
-
-
 
 impl fmt::Display for MalVal {
   // This trait requires `fmt` with this exact signature.
@@ -63,9 +62,10 @@ impl fmt::Display for MalVal {
         Keyword(s) => write!(f, "{}", s),
         Bool(b) => write!(f, "{}", b),
         Int(i) => write!(f, "{}", i),
-        List(mvs, _) => write!(f, "{}", "List"),
-        Vector(mvs, _) => write!(f, "{}", "Vector"),
-        Hash(mvs, _) => write!(f, "{}", "Hash"),
+        List(_mvs, _) => write!(f, "{}", "List"),
+        Vector(_mvs, _) => write!(f, "{}", "Vector"),
+        Hash(_mvs, _) => write!(f, "{}", "Hash"),
+        Func(_fn) => write!(f, "{}", "Func"),
         Atom() => write!(f, "{}", "Atom")
       }
   }

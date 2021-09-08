@@ -2,7 +2,7 @@ use std::rc::Rc;
 use fnv::FnvHashMap;
 
 use crate::types::{MalVal};
-use crate::types::MalVal::{List, Vector, Hash, Nil, Str, Sym, Bool, Int, Atom, Keyword};
+use crate::types::MalVal::{List, Vector, Hash, Nil, Str, Sym, Bool, Int, Atom, Keyword, Func};
 
 
 impl MalVal {
@@ -25,6 +25,7 @@ impl MalVal {
                                         .collect();
                 format!("{{{}}}", print_seq(&kvs))
             },
+            Func(f) => format!("<func {:?}", f),
             Atom() => String::from("@")
         }
     }
