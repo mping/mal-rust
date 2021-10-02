@@ -9,8 +9,8 @@ use fnv::FnvHashMap;
 use std::rc::Rc;
 
 use crate::types::MalErr::{ErrString, ErrMalVal};
-use crate::types::{MalVal, MalArgs, MalRet, MalErr};
-use crate::types::MalVal::{Func, Int, Sym, List, Nil};
+use crate::types::{MalVal, MalArgs, MalRet, MalErr, MapKey};
+use crate::types::MalVal::{Func, Int, Sym, List, Vector, Hash, Nil};
 use crate::types::{error, format_error};
 
 #[macro_use]
@@ -39,6 +39,7 @@ fn eval_ast(ast: &MalVal, env: &Env) -> MalRet {
                     .get(s)
                     .ok_or(ErrString(format!("'{}' not found", s)))?
                     .clone()),
+        // eval list args
         List(args, _) => {
             let mut v: MalArgs = vec![];
             for mv in args.iter() {
@@ -46,6 +47,24 @@ fn eval_ast(ast: &MalVal, env: &Env) -> MalRet {
             }
             Ok(list!(v))
         },
+        // eval vectors
+        Vector(args, _) => {
+            let mut v: MalArgs = vec![];
+            for mv in args.iter() {
+                v.push(eval(mv, env)?)
+            }
+            Ok(vector!(v))
+        },
+        // eval hash keys and vals
+        Hash(kvs, _ ) => {
+            let mut hm: FnvHashMap<MapKey, MalVal> = FnvHashMap::default();
+            for (k, v) in kvs.iter() {
+                // TODO: why clone??
+                // TODO: should eval k too
+                hm.insert(k.clone(), eval(v, env)?);
+            }
+            Ok(Hash(Rc::new(hm), Rc::new(Nil)))
+        }
         _ => Ok(ast.clone()),
     }
 }
@@ -53,14 +72,17 @@ fn eval_ast(ast: &MalVal, env: &Env) -> MalRet {
 fn eval(ast: &MalVal, env: &Env) -> MalRet {
     // println!("Eval'ing {:?}", ast);
     match ast {
+        // eval toplevel form
         List(v, _) => {
             if v.len() == 0 {
                 return Ok(ast.clone())
             }
-            // evaluate each liast item individually
+            // evaluate each list item individually
             let evaluated = eval_ast(ast, env)?;
+            println!("Evaluated {:?}", evaluated);
 
             // now we should be able to apply the function
+            // remember that in MAL, list are `(<fn> arg1 ... argN)`
             match evaluated {
                 List(v, _) => {
                     let (fcall, fargs) = v.split_at(1);
@@ -88,21 +110,21 @@ fn rep(str: &str, env: &Env) -> Result<String, MalErr> {
     Ok(print(&exp))
 }
 
-fn op(args: MalArgs, f: fn(i1:i64, i2:i64) -> i64) -> MalRet {
+fn op(args: MalArgs, f: fn(i1: i64, i2: i64) -> i64) -> MalRet {
     if args.len() == 0 || args.len() < 2 {
         return Err(ErrString(format!("Insufficient arguments: {} ", args.len())));
     }
-    println!("eval {:?}", args);
+    // println!("eval {:?}", args);
     let res = args
                 .iter()
                 .map(|mv| match &mv {
-                    Int(i) => i,
+                    Int(i) => *i,
                     _      => panic!("Eval op {:?}; cannot eval datatype", args)
                 })
-                .copied()
-                .reduce(|a, b| f(a, b));
-
-    res.map(|i| Int(i)).ok_or(ErrString(format!("Could not apply op: {:?} ", args)))
+                .reduce(f)
+                .map(|i| Int(i))
+                .ok_or(ErrString(format!("Could not apply op: {:?} ", args)));
+    return res;
 }
 
 
