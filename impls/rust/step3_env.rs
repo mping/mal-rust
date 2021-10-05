@@ -31,16 +31,14 @@ mod printer;
 mod env;
 use crate::env::{Env, make_env};
 
-// pub type Env = FnvHashMap<String, MalVal>;
-
 // read
-fn read(str: &str) -> MalRet {
+fn read(str: &str) -> MalRet {    
     reader::read_str(str.to_string())
 }
 
 // eval
 fn eval_ast(ast: &MalVal, env: &mut Env) -> MalRet {
-    println!("  eval_ast {:?}", ast);
+    println!("- eval_ast {:?}", ast);
     match ast {
         Sym(s) => env.get(s.to_string()),
         // eval list args
@@ -73,6 +71,7 @@ fn eval_ast(ast: &MalVal, env: &mut Env) -> MalRet {
     }
 }
 
+// toplevel eval
 fn eval(ast: &MalVal, env: &mut Env) -> MalRet {
     println!("eval: {:?}", ast);
     match ast {
