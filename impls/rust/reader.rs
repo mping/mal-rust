@@ -6,7 +6,7 @@ use crate::types::MalErr::ErrString;
 use crate::types::{MalErr, MalVal, MalRet, error, hash_map};
 use crate::types::MalVal::{List, Vector, Nil, Str, Int, Bool, Keyword, Sym};
 
-
+#[derive(Debug)]
 pub struct Reader {
     tokens: Vec<String>,
     position: usize
@@ -47,12 +47,12 @@ fn tokenize(s: &String) -> Vec<String>{
 
 
 pub fn read_str(s: String)-> MalRet {
-    let tokens = tokenize(&s);
+    let tokens = tokenize(&s);    
     if tokens.len() == 0 {
         return error("no input");
     }
     read_form(&mut Reader {
-        position:0, tokens: tokens
+        position: 0, tokens: tokens
     })
 }
 
@@ -123,6 +123,7 @@ fn read_atom(r: &mut Reader) -> MalRet {
 
 fn read_form(r: &mut Reader) -> MalRet {
     let token = r.peek()?;
+    
     match &token[..] {
         "(" => { read_list(r) }
         ")" => { error("reader: Unexpected character: ')'") }

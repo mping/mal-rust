@@ -38,13 +38,13 @@ fn read(str: &str) -> MalRet {
 
 // eval
 fn eval_ast(ast: &MalVal, env: &mut Env) -> MalRet {
-    println!("- eval_ast {:?}", ast);
+    // println!("eval_ast {:?}", ast);
     match ast {
         Sym(s) => env.get(s.to_string()),
         // eval list args
         List(args, _) => {
             let mut v: MalArgs = vec![];
-            for mv in args.iter() {
+            for mv in args.iter() {                
                 v.push(eval(mv, env)?)
             }
             Ok(list!(v))
@@ -72,52 +72,59 @@ fn eval_ast(ast: &MalVal, env: &mut Env) -> MalRet {
 }
 
 // toplevel eval
-fn eval(ast: &MalVal, env: &mut Env) -> MalRet {
-    println!("eval: {:?}", ast);
+fn eval(ast: &MalVal, env: &mut Env) -> MalRet {    
     match ast {
-        // eval toplevel form
+        // eval toplevel form: if it's a list it can be multiple things
         List(v, _) => {
             if v.len() == 0 {
                 return Ok(ast.clone())
             }
-            // evaluate each list item individually
-            let evaluated = eval_ast(ast, env)?;
-            println!("Evaluated: {:?}", evaluated);
-
-            // now we should be able to apply the function
-            // remember that in MAL, list are `(<fn> arg1 ... argN)`
-            match evaluated {                                
-                List(v, _) => {
-                    
-                    let first = &v[0];
-                    match first {
-                        // def new var
-                        Sym(s) if s == "def!" => {                            
-                            let binding = v.get(1).ok_or(ErrString(format!("No binding for expression: {:?}", v))).unwrap();
-                            let val = v.get(2).ok_or(ErrString(format!("No value for expression: {:?}", v))).unwrap();
-                            env.set(binding.to_string(), val.clone())?;
-                                                        
-                            println!("sym: {:?} binding {:?}", binding, val);
-                            Ok(val.clone())
-                        },
-                        // let expression
-                        Sym(s) if s == "let*" => {
-                            Ok(Nil)
-                        },
-                        // regular function call
-                        _ => {
-                            let (fcall, fargs) = v.split_at(1);
-                            print!("fcall: {:?}", fcall);
-                            match fcall {
-                                [Func(f)] => (*f)(fargs.to_vec()),
-                                _ => error(&format!("can't apply: {:?}", fcall)),
-                            }
-                        }
-                    }
+            
+            let first = &v[0];
+            match first {
+                // (def! binding val)
+                Sym(s) if s == "def!" => {                            
+                    let binding = v.get(1).ok_or(ErrString(format!("No binding for expression: {:?}", v))).unwrap();
+                    let val = v.get(2).ok_or(ErrString(format!("No value for expression: {:?}", v))).unwrap();
+                    let bindval = eval(val, env)?;
+                    env.set(binding.to_string(), bindval.clone())?;
+                                                
+                    // println!("sym: {:?} binding {:?}", binding, val);
+                    return Ok(bindval);
                 },
-                _ => error("expected a list"),
+                // (let* [binding1 val1
+                //        bindingN valN] 
+                //    body)
+                Sym(s) if s == "let*" => {
+                    let bindings = v.get(1).ok_or(ErrString(format!("No bindings for expression: {:?}", v))).unwrap();
+                    let body = v.get(2).ok_or(Nil).unwrap(); // let can have empty bindings
+
+                    // TODO bindings should be a List of (sym, something, sym something)
+                    // body can be anything
+                    // - should eval the list within a new environment
+                    // - the eval the body with this new environment
+                    // - then discard/pop the new environment
+
+                    println!("Let {:?} {:?}", bindings, body);
+                    return Ok(Nil);
+                },
+
+                // regular function call
+                // (+ 1 1)
+                _ => match eval_ast(ast, env)? {
+                    List(v, _) => {
+                        let (fcall, fargs) = v.split_at(1);
+                        match fcall {
+                            [Func(f)]  => return (*f)(fargs.to_vec()),
+                            [Sym(unk)] => error(&format!("'{:}' not found", unk)),
+                            _          => error(&format!("'{:?}' not found", fcall.get(0))),
+                        }
+                    },
+                    _ => error("Expected a list")
+                }
             }
         },
+        // if toplevel is not a list, evaluate its AST
         rst => eval_ast(&rst, env)
     }
 }
@@ -128,7 +135,7 @@ fn print(ast: &MalVal) -> String {
 }
 
 fn rep(str: &str, env: &mut Env) -> Result<String, MalErr> {
-    let ast = read(str)?;
+    let ast = read(str)?;    
     let exp = eval(&ast, env)?;
     Ok(print(&exp))
 }
