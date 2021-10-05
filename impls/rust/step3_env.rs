@@ -92,26 +92,29 @@ fn eval(ast: &MalVal, env: &mut Env) -> MalRet {
                     
                     let first = &v[0];
                     match first {
+                        // def new var
                         Sym(s) if s == "def!" => {                            
                             let binding = v.get(1).ok_or(ErrString(format!("No binding for expression: {:?}", v))).unwrap();
                             let val = v.get(2).ok_or(ErrString(format!("No value for expression: {:?}", v))).unwrap();
                             env.set(binding.to_string(), val.clone())?;
                                                         
-                            println!("sym: {:?} binding {:?}", binding, val)
+                            println!("sym: {:?} binding {:?}", binding, val);
+                            Ok(val.clone())
                         },
+                        // let expression
                         Sym(s) if s == "let*" => {
-                            // TODO pairwise,
+                            Ok(Nil)
                         },
-                        _ => {} // don't care, proceeed to function evaluation
-                    };
-
-                    let (fcall, fargs) = v.split_at(1);
-                    print!("fcall: {:?}", fcall);
-                    match fcall {
-                        [Func(f)] => (*f)(fargs.to_vec()),
-                        _ => error(&format!("can't apply: {:?}", fcall)),
+                        // regular function call
+                        _ => {
+                            let (fcall, fargs) = v.split_at(1);
+                            print!("fcall: {:?}", fcall);
+                            match fcall {
+                                [Func(f)] => (*f)(fargs.to_vec()),
+                                _ => error(&format!("can't apply: {:?}", fcall)),
+                            }
+                        }
                     }
-                    // Ok(Sym(format!("{:?} => {:?}", fcall, fargs)))
                 },
                 _ => error("expected a list"),
             }
