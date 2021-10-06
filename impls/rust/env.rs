@@ -7,12 +7,11 @@ use crate::types::MapKey::{Ks, Kw};
 use crate::types::MalVal::{List, Vector, Hash, Nil, Str, Sym, Bool, Int, Atom, Keyword, Func};
 use crate::types::MalErr::ErrString;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Env {
     data: FnvHashMap<String, MalVal>,
     outer: Option<Box<Env>>
 }
-
 
 pub fn make_env(outer: Option<Env>) -> Env {
     Env {
@@ -26,6 +25,7 @@ pub fn make_env(outer: Option<Env>) -> Env {
 
 
 impl Env {
+
     pub fn set(&mut self, sym: String, val: MalVal) -> MalRet {
         // Why dup?
         let dup = val.clone();

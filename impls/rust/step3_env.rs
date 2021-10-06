@@ -98,15 +98,36 @@ fn eval(ast: &MalVal, env: &mut Env) -> MalRet {
                 Sym(s) if s == "let*" => {
                     let bindings = v.get(1).ok_or(ErrString(format!("No bindings for expression: {:?}", v))).unwrap();
                     let body = v.get(2).ok_or(Nil).unwrap(); // let can have empty bindings
+                    let mut let_env = make_env(Some(env.clone()));
 
                     // TODO bindings should be a List of (sym, something, sym something)
                     // body can be anything
                     // - should eval the list within a new environment
                     // - the eval the body with this new environment
                     // - then discard/pop the new environment
+                    match bindings {
+                        List(bindvec, _) | Vector(bindvec, _) => {
+                            if bindvec.len() %2 != 0 {
+                                return error(&format!("let* bindings: mismatch"))
+                            }
 
-                    println!("Let {:?} {:?}", bindings, body);
-                    return Ok(Nil);
+                            // create bindings
+                            for pair in bindvec.chunks(2) {
+                                match pair {
+                                    [Sym(binding), expr] => {
+                                        let res = eval(expr, &mut let_env)?;
+                                        let_env.set(binding.to_string(), res)?;
+                                    },
+                                    _ => return error(&format!("let* bindings: binding is not a symbol"))
+                                }
+                            }
+
+                            // evaluate body with inner env
+                            // println!("Gonna evaluate body {:?} with env {:?}", body, let_env);
+                            return eval(body, &mut let_env);
+                        },
+                        _  => error(&format!("let* bindings: not a list"))
+                    }
                 },
 
                 // regular function call
